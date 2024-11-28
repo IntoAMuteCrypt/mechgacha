@@ -5,6 +5,7 @@ import json
 import logging
 
 from gacha_tables import all_parts_list, starting_inventory
+from gacha_mechanics import TagType
 
 import asyncio
 
@@ -165,10 +166,16 @@ async def inventory_command(message, message_body, client):
         playerdata["equipment"] = []
         db.set_player_data(userid, playerdata)
 
-    try:
-        page = int(message_body.strip())
-    except:
-        page = 1 # page 1 is the first page
+    args = message_body.split()
+
+    page=1
+    tag=None
+
+    for arg in args:
+        if arg.isnumeric():
+            page = int(arg)
+        elif arg in TagType:
+            requested_tag = arg
 
     if page <= 0:
         return await message.channel.send("There ain't no such page of your inventory")
@@ -180,7 +187,21 @@ async def inventory_command(message, message_body, client):
         add_new_player(userid)
         inventory = compute_inventory(userid)
 
-    return await message.channel.send(represent_inventory_as_string(inventory, playerdata, page))
+    crypt_bodge = ""
+    
+    if tag:
+        try:
+            inventory = list(filter(lambda id: all_parts_list[id].tag==requested_tag)) # Is inventory a list containing item_ids?
+                                                                                       # Or a list of something else?
+                                                                                       # If it's something else, this needs to change.
+        except KeyError or AttributeError:
+            crypt_message_header_bodge = "Someone yell at Crypt, his code done broke."
+            # This means that the filter just messed up horrifically, 
+
+    if inventory:
+        return await message.channel.send("\n".join(crypt_bodge, represent_inventory_as_string(inventory, playerdata, page)))
+    else:
+        return await message.channel.send("\n".join(crypt_bodge, "You don't have any items of that type!")
 
 
 def get_first_item_of_type(userid, type):
